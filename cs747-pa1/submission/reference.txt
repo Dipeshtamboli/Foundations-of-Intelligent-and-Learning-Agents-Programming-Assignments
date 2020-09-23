@@ -1,0 +1,2 @@
+-https://stackoverflow.com/questions/2566412/find-nearest-value-in-numpy-array/2566508#2566508
+-https://matplotlib.org/api/_as_gen/matplotlib.pyplot.subplots.html

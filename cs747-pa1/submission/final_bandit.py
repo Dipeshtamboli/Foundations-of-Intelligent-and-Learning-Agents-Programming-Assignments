@@ -188,7 +188,7 @@ def epsilon_g(instance, algorithm,arm_prob,randomSeed,epsilon,horizon):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Parse instance, algorithm, randomSeed, epsilon, horizon.')
     parser.add_argument('--instance', default="../instances/i-3.txt", help='instance in, where in is a path to the instance file.')
-    parser.add_argument('--algorithm', default="epsilon-greedy", help='algorithm al, where al is one of epsilon-greedy, ucb, kl-ucb, thompson-sampling, and thompson-sampling-with-hint.')
+    parser.add_argument('--algorithm', default="kl-ucb", help='algorithm al, where al is one of epsilon-greedy, ucb, kl-ucb, thompson-sampling, and thompson-sampling-with-hint.')
     parser.add_argument('--randomSeed', default=0, help='randomSeed rs, where rs is a non-negative integer.')
     parser.add_argument('--epsilon', default=0.02, help='epsilon ep, where ep is a number in [0, 1].')
     parser.add_argument('--horizon', default=102400, help='horizon hz, where hz is a non-negative integer.')
@@ -220,29 +220,24 @@ if __name__ == '__main__':
 
     # empirical_probs, pull_count, regret, regret_step = algo[algorithm](arms_prob,randomSeed,epsilon,horizon)
     regret_step_all = np.zeros((horizon))
-    e_reg = []
-
-    # for instance in ["../instances/i-1.txt", "../instances/i-2.txt", "../instances/i-3.txt"]:
-    for instance in ["../instances/i-3.txt"]:
+    for instance in ["../instances/i-1.txt", "../instances/i-2.txt", "../instances/i-3.txt"]:
         bandit_instance_file = open(instance, "r")
         arm_file = instance.split('/')[-1].split('.')[0]
         arms_prob =[]
         for i_arm_prob in bandit_instance_file:
             arms_prob.append(float(i_arm_prob.strip()))
 
-        # for randomSeed in range(50):
-        for iter, epsilon in enumerate(np.arange(0,0.1,0.0005)):
+        for randomSeed in range(50):
             # print(randomSeed)
             np.random.seed(randomSeed)
             empirical_probs, pull_count, regret, regret_step = algo[algorithm](instance, algorithm,arms_prob,randomSeed,epsilon,horizon)
-            # np.save(f'{algorithm}/i:{arm_file}_s:{randomSeed}.npy',regret_step)
-            # regret_step_all[iter]= regret
-            e_reg.append(regret)
-    # regret_step_all /= 50
-    plt.figure()
-    plt.plot(range(len(e_reg)),e_reg)
+            np.save(f'{algorithm}/i:{arm_file}_s:{randomSeed}.npy',regret_step)
+            regret_step_all += regret_step
+    regret_step_all /= 50
+    # plt.figure()
+    # plt.plot(range(horizon),regret_step_all)
     # plt.xscale('log', basex = 10)
-    plt.savefig(f'T3_0.1.jpg')
+    # plt.savefig(f'allseeds_{arm_file}_{algorithm}_h:{horizon}_s:{randomSeed}_eps:{epsilon}.jpg')
 
     # print(arms_prob ,empirical_probs, pull_count, regret, regret/horizon)
     # print(instance, algorithm, randomSeed, epsilon, horizon, regret)
