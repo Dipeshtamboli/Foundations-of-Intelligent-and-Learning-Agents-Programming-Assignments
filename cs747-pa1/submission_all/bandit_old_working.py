@@ -25,13 +25,44 @@ import argparse
 #         # second_term = 0
 
 #     return first_term + second_term
-def thompson_sampling_with_hint(instance, algorithm,arm_prob,randomSeed,epsilon,horizon):
-    pass
+def thompson_sampling_with_hint(instance, algorithm,arm_prob,randomSeed,epsilon,horizon,sorted_true_means):
+    empirical_probs = np.zeros((len(arm_prob)))
+    successes = np.zeros((len(arm_prob)))
+    failures = np.zeros((len(arm_prob)))
+    pull_count = np.zeros((len(arm_prob)))
+    beta_value = np.zeros((len(arm_prob)))
+    regret_step = np.zeros((horizon))
+    sum_reward = 0
+    posterior = np.ones((len(arm_prob),len(arm_prob)))
+    sorted_p = sorted_true_means
+    sorted_1_p = 1- sorted_true_means
+    p_true_max = max(sorted_true_means)
+    for t in range(1, horizon+1):
+        for real_arm in range(len(arms_prob)):
+            # for given_mean_arm in range(len(arms_prob)):
+            #     posterior[real_arm][given_mean_arm] = (sorted_p[given_mean_arm]**successes[real_arm])*(sorted_1_p[given_mean_arm]**failures[real_arm])
+
+            posterior[real_arm] = (sorted_p**successes[real_arm])*(sorted_1_p**failures[real_arm])
+        # posterior = (sorted_p**successes)*(sorted_1_p**failures)
+        posterior = posterior/np.sum(posterior, axis=1).reshape(len(arms_prob),1)
+        arm_id = np.argmax(posterior[:,-1])
+        reward = np.random.binomial(1, arm_prob[arm_id])
+        successes[arm_id] += reward
+        failures[arm_id] += (1-reward)
+        empirical_probs[arm_id] = (empirical_probs[arm_id] * pull_count[arm_id] + reward)/(pull_count[arm_id]+1)*1.0
+        pull_count[arm_id] += 1
+        sum_reward += reward        
+        # regret_step[t-1] = (t*np.max(arm_prob) - sum_reward)
+        if t in [100, 400, 1600, 6400, 25600, 102400]:
+            print(instance, algorithm, randomSeed, epsilon, t, regret_step[t-1])        
+    regret = horizon*np.max(arm_prob) - sum_reward
+    return empirical_probs, pull_count, regret, regret_step
+
 def kl(p,q):
     first_term = p * np.log((p + 1e-10) / (q+ 1e-10))
     second_term = (1-p) * np.log((1-p+ 1e-10) / (1-q+ 1e-10))
     return first_term + second_term
-def kl_ucb(instance, algorithm,arm_prob,randomSeed,epsilon,horizon):
+def kl_ucb(instance, algorithm,arm_prob,randomSeed,epsilon,horizon,sorted_true_means):
     sum_reward = 0
     empirical_probs = np.zeros((len(arm_prob)))
     q_values = np.zeros((len(arm_prob)))
@@ -43,8 +74,8 @@ def kl_ucb(instance, algorithm,arm_prob,randomSeed,epsilon,horizon):
             steps = np.arange(empirical_probs[arm_id_iter],1,0.001)
             value = np.ones(steps.shape)*empirical_probs[arm_id_iter]
             kl_d = kl(value,steps)
+            smaller_vals = (pull_count[arm_id_iter]*kl_d <= np.log(t) )
             # smaller_vals = (pull_count[arm_id_iter]*kl_d <= np.log(t) + c*np.log(np.log(t)))
-            smaller_vals = (pull_count[arm_id_iter]*kl_d <= np.log(t))
             q_max_arg = [iter_i for iter_i, val in enumerate(smaller_vals) if val]
             # pdb.set_trace()
             if len(q_max_arg) == 0:
@@ -99,7 +130,7 @@ def kl_ucb(instance, algorithm,arm_prob,randomSeed,epsilon,horizon):
 #     regret = horizon*np.max(arm_prob) - sum_reward
 #     return empirical_probs, pull_count, regret
 
-def thompson_sampling(instance, algorithm,arm_prob,randomSeed,epsilon,horizon):
+def thompson_sampling(instance, algorithm,arm_prob,randomSeed,epsilon,horizon,sorted_true_means):
     empirical_probs = np.zeros((len(arm_prob)))
     successes = np.zeros((len(arm_prob)))
     failures = np.zeros((len(arm_prob)))
@@ -124,7 +155,7 @@ def thompson_sampling(instance, algorithm,arm_prob,randomSeed,epsilon,horizon):
             print(instance, algorithm, randomSeed, epsilon, t, regret_step[t-1])        
     regret = horizon*np.max(arm_prob) - sum_reward
     return empirical_probs, pull_count, regret, regret_step
-def ucb(instance, algorithm,arm_prob,randomSeed,epsilon,horizon):
+def ucb(instance, algorithm,arm_prob,randomSeed,epsilon,horizon,sorted_true_means):
     empirical_probs = np.zeros((len(arm_prob)))
     pull_count = np.ones((len(arm_prob))) * 1e-10
     ucb_value = np.zeros((len(arm_prob)))
@@ -153,7 +184,7 @@ def ucb(instance, algorithm,arm_prob,randomSeed,epsilon,horizon):
     regret = horizon*np.max(arm_prob) - sum_reward
     return empirical_probs, pull_count, regret, regret_step
 
-def epsilon_g(instance, algorithm,arm_prob,randomSeed,epsilon,horizon):
+def epsilon_g(instance, algorithm,arm_prob,randomSeed,epsilon,horizon,sorted_true_means):
     explore_steps = int(epsilon*horizon)
     empirical_probs = [0] * len(arm_prob)
     pull_count = [0] * len(arm_prob)
@@ -174,8 +205,8 @@ def epsilon_g(instance, algorithm,arm_prob,randomSeed,epsilon,horizon):
         pull_count[arm_id] += 1
         sum_reward += reward
         regret_step[t-1] = (t*np.max(arm_prob) - sum_reward)
-        if t in [100, 400, 1600, 6400, 25600, 102400]:
-            print(instance, algorithm, randomSeed, epsilon, t, regret_step[t-1])
+        # if t in [100, 400, 1600, 6400, 25600, 102400]:
+        #     print(instance, algorithm, randomSeed, epsilon, t, regret_step[t-1])
     regret = horizon*np.max(arm_prob) - sum_reward
     # print(sum_reward, np.max(arm_prob))
 
@@ -189,8 +220,8 @@ def epsilon_g(instance, algorithm,arm_prob,randomSeed,epsilon,horizon):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Parse instance, algorithm, randomSeed, epsilon, horizon.')
     parser.add_argument('--instance', default="../instances/i-3.txt", help='instance in, where in is a path to the instance file.')
-    parser.add_argument('--algorithm', default="kl-ucb", help='algorithm al, where al is one of epsilon-greedy, ucb, kl-ucb, thompson-sampling, and thompson-sampling-with-hint.')
-    parser.add_argument('--randomSeed', default=0, help='randomSeed rs, where rs is a non-negative integer.')
+    parser.add_argument('--algorithm', default="thompson-sampling-with-hint", help='algorithm al, where al is one of epsilon-greedy, ucb, kl-ucb, thompson-sampling, and thompson-sampling-with-hint.')
+    parser.add_argument('--randomSeed', default=1, help='randomSeed rs, where rs is a non-negative integer.')
     parser.add_argument('--epsilon', default=0.02, help='epsilon ep, where ep is a number in [0, 1].')
     parser.add_argument('--horizon', default=102400, help='horizon hz, where hz is a non-negative integer.')
 
@@ -211,38 +242,67 @@ if __name__ == '__main__':
     algo["epsilon-greedy"] = epsilon_g
     algo["kl-ucb"] = kl_ucb
     algo["thompson-sampling"] = thompson_sampling
-    algo["thompson_sampling_with_hint"] = thompson_sampling_with_hint
+    algo["thompson-sampling-with-hint"] = thompson_sampling_with_hint
 
 
     start_time = time()
 
+    # bandit_instance_file = open(instance, "r")
+    # arm_file = instance.split('/')[-1].split('.')[0]
+    # arms_prob =[]
+
+    # for i_arm_prob in bandit_instance_file:
+    #     arms_prob.append(float(i_arm_prob.strip()))
+
+    # sorted_true_means = np.sort(arms_prob)
     # print(arms_prob)
     # epsilon-greedy, ucb, kl-ucb, thompson-sampling, and thompson-sampling-with-hint    
 
-    # empirical_probs, pull_count, regret, regret_step = algo[algorithm](arms_prob,randomSeed,epsilon,horizon)
-    # regret_step_all = np.zeros((horizon))
-    for instance in ["../instances/i-3.txt"]:
+    # np.random.seed(randomSeed)
+    # empirical_probs, pull_count, regret, regret_step = algo[algorithm](instance, algorithm,arms_prob,randomSeed,epsilon,horizon,sorted_true_means)
+
+    # print(f"{algorithm} arm_file: {arm_file} regret:{regret}")
+
+
+    e_reg = 0
+    regret_step_all = np.zeros((horizon))
+    # for instance in ["../instances/i-3.txt"]:
+    for instance in ["../instances/i-1.txt", "../instances/i-2.txt", "../instances/i-3.txt"]:
         bandit_instance_file = open(instance, "r")
         arm_file = instance.split('/')[-1].split('.')[0]
         arms_prob =[]
+
         for i_arm_prob in bandit_instance_file:
             arms_prob.append(float(i_arm_prob.strip()))
 
-    #     for randomSeed in range(50):
-    np.random.seed(randomSeed)
-    #         empirical_probs, pull_count, regret, regret_step = algo[algorithm](instance, algorithm,arms_prob,randomSeed,epsilon,horizon)
-    #         np.save(f'{algorithm}/i:{arm_file}_s:{randomSeed}.npy',regret_step)
-    #         regret_step_all += regret_step
-    # regret_step_all /= 50
+        sorted_true_means = np.sort(arms_prob)
+        # print(arms_prob)
+        # print(sorted_true_means)
+        regret_avg = np.zeros((6))
+        for randomSeed in range(50):
+        # for iter, epsilon in enumerate(np.arange(0,0.1,0.0005)):
+            # print(randomSeed)
+            regret_smart = np.zeros((6))
+            for iter, horizon in enumerate([100, 400, 1600, 6400, 25600, 102400]):
 
-    print(randomSeed)
-    empirical_probs, pull_count, regret, regret_step = algo[algorithm](instance, algorithm,arms_prob,randomSeed,epsilon,horizon)
-    np.save(f'{algorithm}/i:{arm_file}_s:{randomSeed}.npy',regret_step)
+                np.random.seed(randomSeed)
+                empirical_probs, pull_count, regret, regret_step = algo[algorithm](instance, algorithm,arms_prob,randomSeed,epsilon,horizon,sorted_true_means)
+                print(f'{instance}, {algorithm}, {randomSeed}, {epsilon}, {horizon}, {regret}')
+                # regret_step_all += regret_step
+                # e_reg+= regret
+                regret_smart[iter] = regret
+            regret_avg += regret_smart
+            np.save(f'{algorithm}/i:{arm_file}_s:{randomSeed}.npy',regret_avg)
+
+    # e_reg/= 50
+    # regret_step_all /= 50
+    # print(f"arm_file: {arm_file} epsilon:{epsilon} regret:{e_reg}")
+    # pdb.set_trace()
     # plt.figure()
-    # plt.plot(range(horizon),regret_step_all)
-    # plt.xscale('log', basex = 10)
-    # plt.savefig(f'allseeds_{arm_file}_{algorithm}_h:{horizon}_s:{randomSeed}_eps:{epsilon}.jpg')
+    # plt.plot(range(len(e_reg)),e_reg)
+    # # plt.xscale('log', basex = 10)
+    # plt.savefig(f'T3_0.1.jpg')
 
     # print(arms_prob ,empirical_probs, pull_count, regret, regret/horizon)
     # print(instance, algorithm, randomSeed, epsilon, horizon, regret)
-    # print(f'total_time taken: {(time()- start_time)//3600} hrs {(time()- start_time)%3600//60} min {int((time()- start_time)%60)} sec')
+    print(f'total_time taken: {(time()- start_time)//3600} hrs {(time()- start_time)%3600//60} min {int((time()- start_time)%60)} sec')
