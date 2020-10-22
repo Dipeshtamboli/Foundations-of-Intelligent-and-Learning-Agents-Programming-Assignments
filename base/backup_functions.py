@@ -1,3 +1,44 @@
+def calculate_Q(v,numStates,numActions,transition_probs, transition_reward, gamma):
+	q_s = np.zeros((numStates,numActions))
+	for state in range(numStates):
+		for action in range(numActions):
+			for next_state in range(numStates):
+				q_s[state][action] += transition_probs[state,action,next_state]*(transition_reward[state,action,next_state] + gamma*v[next_state])
+	return q_s
+def hpi_vstar(numStates,numActions,transition_probs, transition_reward, gamma):
+	pi = np.zeros((numStates), dtype = int)
+	v = np.zeros((numStates))
+	while(1):
+		v = cal_v_from_pi(pi,v,numStates,numActions,transition_probs, transition_reward, gamma)
+		q_s = calculate_Q(v,numStates,numActions,transition_probs, transition_reward, gamma)
+		# print(v)
+		# pdb.set_trace()
+		next_pi = np.argmax(q_s, 1)
+		if np.all(next_pi == pi):
+			return pi, v
+		pi = next_pi
+def cal_v_from_pi(pi,v,numStates,numActions,transition_probs, transition_reward, gamma):
+	while True:
+		v_new = np.zeros((numStates))
+		for state in range(numStates):
+			for next_state in range(numStates):
+				v_new[state] += transition_probs[state,int(pi[state]),next_state]*(transition_reward[state,int(pi[state]),next_state] + gamma*v[next_state])
+		# pdb.set_trace()
+		if np.sum(np.abs(v-v_new)) < 1e-10:
+			return v_new
+		v = v_new
+# def cal_v_from_pi(pi,numStates,numActions,transition_probs, transition_reward, gamma):
+# 	v = np.zeros((numStates))
+# 	for next_state in range(numStates):
+# 		pdb.set_trace()
+# 		v += transition_probs[:,pi[:],next_state]*(transition_reward[:,pi[:],next_state] + gamma*v[next_state])
+# 	return v
+def cal_v_from_pi(pi,numStates,numActions,transition_probs, transition_reward, gamma):
+	v = np.zeros((numStates))
+	for state in range(numStates):
+		for next_state in range(numStates):
+			v[state] += transition_probs[state,int(pi[state]),next_state]*(transition_reward[state,int(pi[state]),next_state] + gamma*v[next_state])
+	return v
 def lp_vstar(numStates,numActions,transition_probs, transition_reward, gamma):
 	Lp_prob = p.LpProblem('finding_V', p.LpMinimize)  
 	state_var =[]

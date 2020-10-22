@@ -3,14 +3,48 @@ import pdb
 from time import time
 import argparse
 import pulp as p 
+start_time = time()
+# def cal_v_from_pi(pi,v_i,numStates,numActions,transition_probs, transition_reward, gamma):
+# 	v = np.zeros((numStates))
+# 	for state in range(numStates):
+# 		for next_state in range(numStates):
+# 			v[state] += transition_probs[state,int(pi[state]),next_state]*(transition_reward[state,int(pi[state]),next_state] + gamma*v[next_state])
+# 	return v
+def cal_v_from_pi(pi,v,numStates,numActions,transition_probs, transition_reward, gamma):
+	while True:
+		v_new = np.zeros((numStates))
+		for state in range(numStates):
+			for next_state in range(numStates):
+				v_new[state] += transition_probs[state,int(pi[state]),next_state]*(transition_reward[state,int(pi[state]),next_state] + gamma*v[next_state])
+		# pdb.set_trace()
+		if np.sum(np.abs(v-v_new)) < 1e-10:
+			return v_new
+		v = v_new
+def calculate_Q(v,numStates,numActions,transition_probs, transition_reward, gamma):
+	q_s = np.zeros((numStates,numActions))
+	for state in range(numStates):
+		for action in range(numActions):
+			for next_state in range(numStates):
+				q_s[state][action] += transition_probs[state,action,next_state]*(transition_reward[state,action,next_state] + gamma*v[next_state])
+	return q_s
+def hpi_vstar(numStates,numActions,transition_probs, transition_reward, gamma):
+	pi = np.zeros((numStates), dtype = int)
+	v = np.zeros((numStates))
+	while(1):
+		v = cal_v_from_pi(pi,v,numStates,numActions,transition_probs, transition_reward, gamma)
+		q_s = calculate_Q(v,numStates,numActions,transition_probs, transition_reward, gamma)
+		# print(v)
+		# pdb.set_trace()
+		next_pi = np.argmax(q_s, 1)
+		if np.all(next_pi == pi):
+			return pi, v
+		pi = next_pi
 
 def lp_vstar(numStates,numActions,transition_probs, transition_reward, gamma):
-	  
 	Lp_prob = p.LpProblem('finding_V', p.LpMinimize)  
 	state_var =[]
 	for i in range(numStates):
 		state_var.append(p.LpVariable(f"state_{i}"))
-
 	Lp_prob += np.sum(state_var)
 	for state in range(numStates):
 		for action in range(numActions):
@@ -18,11 +52,9 @@ def lp_vstar(numStates,numActions,transition_probs, transition_reward, gamma):
 			for next_state in range(numStates):
 				sum_over_next_state += transition_probs[state,action,next_state]*(transition_reward[state,action,next_state] + gamma*state_var[next_state])
 			Lp_prob += sum_over_next_state <= state_var[state]
-	print(Lp_prob) 
-	status = Lp_prob.solve()   # Solver 
-	# print(p.LpStatus[status])   # The solution status 
-	for i in range(numStates):
-		print(p.value(state_var[i]))
+	status = p.PULP_CBC_CMD(msg=0).solve(Lp_prob)
+	v_star = [p.value(state_var[i]) for i in range(numStates)]
+	return np.array(v_star)
 def vi_vstar(numStates,numActions,transition_probs, transition_reward, gamma):
 	V = np.zeros((numStates))
 	while(1):
@@ -49,10 +81,11 @@ def vi_pi_star(v_star,numStates,numActions,transition_probs, transition_reward, 
 	return np.argmax(action_reward, 0)
 
 if __name__ == '__main__':
-	start_time = time()
+	
 	parser = argparse.ArgumentParser(description='MDP Planning')
-	parser.add_argument('--mdp', default="data/mdp/episodic-mdp-50-20.txt", help='path to mdp file.')
-	parser.add_argument('--algorithm', default="lp", help='one of vi, hpi, and lp')
+	parser.add_argument('--mdp', default="data/mdp/continuing-mdp-10-5.txt", help='path to mdp file.')
+	# parser.add_argument('--mdp', default="data/mdp/episodic-mdp-10-5.txt", help='path to mdp file.')
+	parser.add_argument('--algorithm', default="hpi", help='one of vi, hpi, and lp')
 
 	args = parser.parse_args()
 	mdp = args.mdp    
@@ -61,7 +94,7 @@ if __name__ == '__main__':
 
 	# Reading MDP file
 	mdp_file = open(mdp, "r")
-
+	end_st =[]
 	for line in mdp_file:
 		line_words = line.strip().split(" ")
 		if line_words[0] == "numStates":
@@ -73,7 +106,8 @@ if __name__ == '__main__':
 		if line_words[0] == "start":
 			start_st = int(line_words[1])
 		if line_words[0] == "end":
-			end_st = int(line_words[1])
+			for st in range(1, len(line_words)):
+				end_st.append(int(line_words[st]))
 
 		if line_words[0] == "transition":
 			transition_reward[int(line_words[1]),int(line_words[2]),int(line_words[3])] = float(line_words[4])
@@ -85,12 +119,18 @@ if __name__ == '__main__':
 			# Discount has 2 spaces
 			gamma = float(line_words[-1])
 
+	# pdb.set_trace()
 	if algorithm=='vi':
 		v_star = vi_vstar(numStates,numActions,transition_probs, transition_reward, gamma)
-		pi_star = vi_pi_star(v_star,numStates,numActions,transition_probs, transition_reward, gamma)
-
 	if algorithm=='lp':
 		v_star = lp_vstar(numStates,numActions,transition_probs, transition_reward, gamma)
-	# for v, a in zip(v_star, pi_star):
-	# 	print(f'{round(v, 6):.6f} {a}')
-	print(f'total_time taken: {(time()- start_time)//3600} hrs {(time()- start_time)%3600//60} min {int((time()- start_time)%60)} sec')
+	if algorithm=='hpi':
+		pi, v_star = hpi_vstar(numStates,numActions,transition_probs, transition_reward, gamma)
+	pi_star = vi_pi_star(v_star,numStates,numActions,transition_probs, transition_reward, gamma)
+	for v, a in zip(v_star, pi_star):
+		if v==0.0:
+			v = 0
+		print(f'{round(v, 6):.6f} {a}')
+
+	# print(f'total_time taken: {(time()- start_time)//3600} hrs \
+	# 	{(time()- start_time)%3600//60} min {int((time()- start_time)%60)} sec')
