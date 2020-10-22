@@ -44,7 +44,7 @@ class Encoder:
 				for act in range(4):
 					next_st = c_st + self.action_dict[str(act)]
 					x_next, y_next = self.st_to_id(next_st)
-					if next_st<0 or next_st>=self.numStates:
+					if next_st<0 or next_st>=self.numStates or np.abs(x- x_next)>1 or np.abs(y- y_next)>1:
 						reward = -10
 						prob = 1
 						next_st = c_st						

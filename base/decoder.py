@@ -34,6 +34,7 @@ class Decoder(object):
 			next_st = self.dir_dict[self.act_dict[action]]
 			next_st = self.id_to_st(x+next_st[0], y+next_st[1])
 			cur_st = next_st
+			# print(x,y)
 			# pdb.set_trace()
 	def id_to_st(self, x, y):
 		return (x)*(self.arr_grid.shape[0]-2) + y
