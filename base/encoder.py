@@ -8,15 +8,72 @@ start_time = time()
 class Encoder:
 	def __init__(self, grid):
 		self.grid = grid
-		# self.age = age
 		self.arr_grid = self.read_grid(grid)
-		pdb.set_trace()
+		self.numStates = (self.arr_grid.shape[0]-2)*(self.arr_grid.shape[1]-2)
 		self.mdp_file = open(f"mdp_{grid.split('/')[-1]}", "w")
+		self.discount = 0.9
+		self.dim0 = self.arr_grid.shape[0]-2
+		self.dim1 = self.arr_grid.shape[1]-2
+		self.action_dict = {"0": -self.dim1,
+							"1": self.dim0,
+							"2": 1,
+							"3": -1
+		}
+		self.write_mdp(self.arr_grid)
+	def id_to_st(self, x, y):
+		return (x)*(self.arr_grid.shape[0]-2) + y
+	def st_to_id(self,state):
+		column = state % (self.arr_grid.shape[0]-2)
+		row = state / (self.arr_grid.shape[0]-2)
+		return int(row),int(column)
 	def write_mdp(self, arr_grid):
+		line_to_write = "numStates "+str(self.dim0*self.dim1)
+		self.write(line_to_write)
+		self.write("numActions 4")
+		start_st = np.where(arr_grid == 2)
+		start_st = (start_st[0][0]-1)*(self.dim0)+start_st[1][0]-1
+		self.write(f"start {start_st}")
+		end_st = np.where(arr_grid == 3)
+		end_st = (end_st[0][0]-1)*(self.dim0)+end_st[1][0]-1
+		self.write(f"end {end_st}")
+		for x in range(0,self.dim0): #rows
+			for y in range(0,self.dim1): #columns
+				# (start_st[0][0]-1)*(arr_grid.shape[0]-2)+start_st[1][0]-1
+				# c_st = (y-1)*(arr_grid.shape[0]-2) + x-1
+				c_st = self.id_to_st(x,y)
+				for act in range(4):
+					next_st = c_st + self.action_dict[str(act)]
+					x_next, y_next = self.st_to_id(next_st)
+					if next_st<0 or next_st>=self.numStates:
+						reward = -10
+						prob = 1
+						next_st = c_st						
+					elif next_st>=0:
+						# pdb.set_trace()
+						if arr_grid[x_next+1][y_next+1] == 1:
+							reward = -10
+							prob = 1
+							next_st = c_st
+						elif arr_grid[x_next+1][y_next+1] == 0:
+							reward = -1
+							prob = 1
+						elif arr_grid[x_next+1][y_next+1] == 3:
+							reward = 10
+							prob = 1
+					# pdb.set_trace()
+					print(line_to_write)
+					line_to_write = f"transition {c_st} {act} {next_st} {reward} {prob}"
+					self.write(line_to_write)
 
-		self.mdp_file.write("Now the file has more content!")
+		self.write(f"mdptype episodic")
+		self.write(f"discount  {self.discount}")
+
+		# pdb.set_trace()
 		self.mdp_file.close()		
 
+	def write(self, line):
+		print(line)
+		self.mdp_file.write(line+'\n')
 	def read_grid(self,grid):
 		grid_file = open(grid, "r")
 		# print(grid_file)

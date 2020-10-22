@@ -4,28 +4,29 @@ from time import time
 import argparse
 import pulp as p 
 start_time = time()
-# def cal_v_from_pi(pi,v_i,numStates,numActions,transition_probs, transition_reward, gamma):
-# 	v = np.zeros((numStates))
-# 	for state in range(numStates):
+# def cal_v_from_pi(pi,v,numStates,numActions,transition_probs, transition_reward, gamma):
+# 	while True:
+# 		v_new = np.zeros((numStates,numStates))
+# 		# for state in range(numStates):
 # 		for next_state in range(numStates):
-# 			v[state] += transition_probs[state,int(pi[state]),next_state]*(transition_reward[state,int(pi[state]),next_state] + gamma*v[next_state])
-# 	return v
+# 			v_new += transition_probs[:,(pi[:]),next_state]*(transition_reward[:,(pi[:]),next_state] + gamma*v[next_state])
+# 		v_new = np.sum(v_new, 0)
+# 		print(v_new)
+# 		if np.sum(np.abs(v-v_new)) < 1e-10:
+# 			return v_new
+# 		v = v_new
 def cal_v_from_pi(pi,v,numStates,numActions,transition_probs, transition_reward, gamma):
 	while True:
 		v_new = np.zeros((numStates))
 		for state in range(numStates):
 			for next_state in range(numStates):
 				v_new[state] += transition_probs[state,int(pi[state]),next_state]*(transition_reward[state,int(pi[state]),next_state] + gamma*v[next_state])
-		# pdb.set_trace()
 		if np.sum(np.abs(v-v_new)) < 1e-10:
 			return v_new
 		v = v_new
 def calculate_Q(v,numStates,numActions,transition_probs, transition_reward, gamma):
-	q_s = np.zeros((numStates,numActions))
-	for state in range(numStates):
-		for action in range(numActions):
-			for next_state in range(numStates):
-				q_s[state][action] += transition_probs[state,action,next_state]*(transition_reward[state,action,next_state] + gamma*v[next_state])
+	q_s = transition_probs*(transition_reward + gamma*v)
+	q_s = np.sum(q_s, 2)
 	return q_s
 def hpi_vstar(numStates,numActions,transition_probs, transition_reward, gamma):
 	pi = np.zeros((numStates), dtype = int)
@@ -33,8 +34,6 @@ def hpi_vstar(numStates,numActions,transition_probs, transition_reward, gamma):
 	while(1):
 		v = cal_v_from_pi(pi,v,numStates,numActions,transition_probs, transition_reward, gamma)
 		q_s = calculate_Q(v,numStates,numActions,transition_probs, transition_reward, gamma)
-		# print(v)
-		# pdb.set_trace()
 		next_pi = np.argmax(q_s, 1)
 		if np.all(next_pi == pi):
 			return pi, v
@@ -83,9 +82,10 @@ def vi_pi_star(v_star,numStates,numActions,transition_probs, transition_reward, 
 if __name__ == '__main__':
 	
 	parser = argparse.ArgumentParser(description='MDP Planning')
-	parser.add_argument('--mdp', default="data/mdp/continuing-mdp-10-5.txt", help='path to mdp file.')
+	# parser.add_argument('--mdp', default="data/mdp/continuing-mdp-10-5.txt", help='path to mdp file.')
 	# parser.add_argument('--mdp', default="data/mdp/episodic-mdp-10-5.txt", help='path to mdp file.')
-	parser.add_argument('--algorithm', default="hpi", help='one of vi, hpi, and lp')
+	parser.add_argument('--mdp', default="mdp_grid10.txt", help='path to mdp file.')
+	parser.add_argument('--algorithm', default="vi", help='one of vi, hpi, and lp')
 
 	args = parser.parse_args()
 	mdp = args.mdp    

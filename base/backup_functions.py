@@ -1,4 +1,13 @@
 def calculate_Q(v,numStates,numActions,transition_probs, transition_reward, gamma):
+	q_s = transition_probs*(transition_reward + gamma*v)
+	q_s = np.sum(q_s, 2)
+	return q_s
+def calculate_Q(v,numStates,numActions,transition_probs, transition_reward, gamma):
+	q_s = np.zeros((numStates,numActions))
+	for next_state in range(numStates):
+		q_s += transition_probs[:,:,next_state]*(transition_reward[:,:,next_state] + gamma*v[next_state])
+	return q_s
+def calculate_Q(v,numStates,numActions,transition_probs, transition_reward, gamma):
 	q_s = np.zeros((numStates,numActions))
 	for state in range(numStates):
 		for action in range(numActions):
@@ -23,7 +32,6 @@ def cal_v_from_pi(pi,v,numStates,numActions,transition_probs, transition_reward,
 		for state in range(numStates):
 			for next_state in range(numStates):
 				v_new[state] += transition_probs[state,int(pi[state]),next_state]*(transition_reward[state,int(pi[state]),next_state] + gamma*v[next_state])
-		# pdb.set_trace()
 		if np.sum(np.abs(v-v_new)) < 1e-10:
 			return v_new
 		v = v_new
