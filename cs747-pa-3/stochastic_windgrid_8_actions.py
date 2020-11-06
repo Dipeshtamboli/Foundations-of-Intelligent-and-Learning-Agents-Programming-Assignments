@@ -16,9 +16,8 @@ def plot(x,y, title,x_lab, y_lab,savename):
 	# plt.show()	
 class GridWorld(object):
 	"""docstring for GridWorld"""
-	def __init__(self, height, width, start, end, wind_vector,num_actions,alpha,epsilon, stochastic):
+	def __init__(self, height, width, start, end, wind_vector,num_actions,alpha,epsilon):
 		super(GridWorld, self).__init__()
-		self.stochastic = stochastic
 		self.steps_for_to_end = 0
 		self.reached_end = 0
 		self.epsilon =epsilon
@@ -58,8 +57,6 @@ class GridWorld(object):
 	def get_next_s_r_8_actions(self, action,i):
 		wind_action = self.wind_vector[self.c]
 		self.r = self.r + wind_action
-		if self.stochastic:
-			self.r += np.random.choice([-1,1,0],1)
 		if "N" in action:
 			self.r -= 1
 		if "S" in action:
@@ -90,7 +87,6 @@ class GridWorld(object):
 
 	def get_next_s_r(self, action,i):
 		wind_action = self.wind_vector[self.c]
-
 		self.r = self.r + wind_action
 		if action == "up":
 			self.r -= 1
@@ -173,17 +169,16 @@ if __name__ == '__main__':
 	height = 7
 	width = 10
 	wind_vector = -np.array([0,0,0,1,1,1,2,2,1,0])
-	num_actions = 8
+	num_actions = 4
 	steps = 10000
 	alpha = 0.5
 	epsilon = 0.05
-	stochastic=True
-	world = GridWorld(height,width,start,end, wind_vector,num_actions,alpha,epsilon,stochastic)
+	world = GridWorld(height,width,start,end, wind_vector,num_actions,alpha,epsilon)
 	# pdb.set_trace()
 	episodes, steps_for_eps = world.find_path(steps)
 	# plot(x,y, title,x_lab, y_lab,savename)
-	plot(range(steps), episodes, f"Episodes against time steps;actions:{num_actions};stock:{stochastic}","Time steps", "Episodes", f"episodes_vs_time_alp:{alpha:.2f}_eps:{epsilon:.2f}_score:{episodes[-1]}.jpg")
-	plot(range(steps), steps_for_eps, f"Steps taken for completing a episode against time steps;actions:{num_actions};stock:{stochastic}","Time steps", "Steps taken for completing a episode", f"episodes_vs_time_alp:{alpha:.2f}_eps:{epsilon:.2f}_score:{np.min(steps_for_eps[np.nonzero(steps_for_eps)])}.jpg")
+	plot(range(steps), episodes, f"Episodes against time steps;actions{num_actions}","Time steps", "Episodes", f"episodes_vs_time_alp:{alpha:.2f}_eps:{epsilon:.2f}_score:{episodes[-1]}.jpg")
+	plot(range(steps), steps_for_eps, f"Steps taken for completing a episode against time steps;actions{num_actions}","Time steps", "Steps taken for completing a episode", f"episodes_vs_time_alp:{alpha:.2f}_eps:{epsilon:.2f}_score:{np.min(steps_for_eps[np.nonzero(steps_for_eps)])}.jpg")
 
 	# for alpha in np.arange(0,1,0.1):
 	# 	for epsilon in np.arange(0,0.1,0.01):
