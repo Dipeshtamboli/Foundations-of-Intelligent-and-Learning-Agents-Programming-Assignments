@@ -169,7 +169,7 @@ if __name__ == '__main__':
 	height = 7
 	width = 10
 	wind_vector = -np.array([0,0,0,1,1,1,2,2,1,0])
-	num_actions = 8
+	num_actions = 4
 	steps = 10000
 	alpha = 0.5
 	epsilon = 0.05
