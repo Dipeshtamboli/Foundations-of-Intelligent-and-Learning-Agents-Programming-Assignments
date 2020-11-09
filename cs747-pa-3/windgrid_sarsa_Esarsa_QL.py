@@ -6,7 +6,7 @@ import numpy as np
 # top-left is (r=0,c=0)
 start_time = time()
 def plot(x,y, title,x_lab, y_lab,savename):
-	# plt.clf()
+	plt.clf()
 	plt.plot(x, y)
 	plt.title(title)
 	plt.xlabel(x_lab)
@@ -74,11 +74,8 @@ class GridWorld(object):
 			self.c = start[1]
 			reward = 10
 			self.reached_end += 1
-
 			self.steps_for_eps[i] = self.steps_for_to_end
 			self.steps_for_to_end = 0
-			# print('#'*20, "Reached end state", '#'*20 )
-			# self.get_current_status()
 
 		next_s = {"r":self.r, "c":self.c}
 		return next_s, reward
@@ -159,19 +156,26 @@ if __name__ == '__main__':
 	alpha = 0.5
 	epsilon = 0.1
 	# algo = "q_learning"
-	# algo = "sarsa"
-	algo = "exp_q_learn"
+	algo = "sarsa"
+	# algo = "exp_q_learn"
 
 	world = GridWorld(height,width,start,end, wind_vector,num_actions,alpha,epsilon)
 	episodes, steps_for_eps = world.find_path(steps, algo)
 	# plot(x,y, title,x_lab, y_lab,savename)
 	# plot(range(steps), episodes, "Episodes against time steps","Time steps", "Episodes", f"{algo}_episodes_vs_time_alp:{alpha:.2f}_eps:{epsilon:.2f}_score:{episodes[-1]}.jpg")
-	# plot(range(steps), steps_for_eps, "Steps taken for completing a episode against time steps","Time steps", "Steps taken for completing a episode", f"steps_taken_vs_time_alp:{alpha}_eps:{epsilon}.jpg")
+	plot(range(steps), steps_for_eps, "Steps taken for completing a episode against time steps","Time steps", "Steps taken for completing a episode", f"steps_taken_vs_time_alp:{alpha}_eps:{epsilon}.jpg")
 	plot_dicts = {}
 	for algo in ["q_learning","sarsa","exp_q_learn"]:
-		world = GridWorld(height,width,start,end, wind_vector,num_actions,alpha,epsilon)
-		episodes, steps_for_eps = world.find_path(steps, algo)		
-		plot_dicts[algo] = episodes
+		for randomseed in range(1,11):
+			np.random.seed(randomseed)
+			world = GridWorld(height,width,start,end, wind_vector,num_actions,alpha,epsilon)
+			episodes, steps_for_eps = world.find_path(steps, algo)		
+			if randomseed == 1:
+				plot_dicts[algo] = episodes
+			plot_dicts[algo] += episodes
+			if randomseed == 10:
+				plot_dicts[algo] /= 10
+
 
 	x = range(steps)
 	plt.plot(x, plot_dicts["q_learning"], label='Q_Learning')
@@ -182,6 +186,6 @@ if __name__ == '__main__':
 	plt.ylabel("Episodes against time steps", fontsize=15)
 	plt.legend(loc=2, prop={'size': 10})
 	plt.grid()
-	plt.savefig("task5.jpg")
+	plt.savefig("randomseed_task5.jpg")
 	print(f'total_time taken: {(time()- start_time)//3600} hrs {(time()- start_time)%3600//60} min {int((time()- start_time)%60)} sec')
 	

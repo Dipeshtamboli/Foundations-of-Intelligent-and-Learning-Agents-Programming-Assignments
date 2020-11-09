@@ -56,7 +56,7 @@ class GridWorld(object):
 	def get_next_s_r_8_actions(self, action,i):
 		wind_action = self.wind_vector[self.c]
 		self.r = self.r + wind_action
-		if self.stochastic:
+		if (self.stochastic) and (wind_action != 0) :
 			self.r += np.random.choice([-1,1,0],1)		
 		if "N" in action:
 			self.r -= 1
@@ -222,15 +222,20 @@ if __name__ == '__main__':
 	width = 10
 	wind_vector = -np.array([0,0,0,1,1,1,2,2,1,0])
 	stochastic = args.stochastic
-	num_actions = args.num_actions
-	steps = args.steps
-	alpha = args.alpha
-	epsilon = args.epsilon
+	num_actions = int(args.num_actions)
+	steps = int(args.steps)
+	alpha = float(args.alpha)
+	epsilon = float(args.epsilon)
 	algo = args.algorithm
-	world = GridWorld(height,width,start,end, wind_vector,num_actions,alpha,epsilon,stochastic)
-	episodes, steps_for_eps = world.find_path(steps,algo)
+	total_eps = 0
+	for randomseed in range(1,11):
+		np.random.seed(randomseed)	
+		world = GridWorld(height,width,start,end, wind_vector,num_actions,alpha,epsilon,stochastic)
+		episodes, steps_for_eps = world.find_path(steps,algo)
+		total_eps += episodes
 	# plot(x,y, title,x_lab, y_lab,savename)
-	plot(range(steps), episodes, f"Episodes against time steps\nactions:{num_actions},alpha:{alpha},eps:{epsilon},max_episodes:{int(episodes[-1])}\nstochastic:{stochastic},algorithm:{algo}","Time steps", "Episodes", f"episodes_vs_time_action.jpg")
+	episodes = total_eps/10
+	plot(range(steps), episodes, f"Episodes against time steps\nactions:{num_actions},alpha:{alpha},eps:{epsilon},max_episodes:{int(episodes[-1])}\nstochastic:{stochastic},algorithm:{algo}","Time steps", "Episodes", f"episodes_vs_time_actions:{num_actions},stochastic:{stochastic},algorithm:{algo}.jpg")
 	# plot(range(steps), steps_for_eps, f"Steps taken for completing a episode against time steps;actions{num_actions}","Time steps", "Steps taken for completing a episode", f"episodes_vs_time_alp:{alpha:.2f}_eps:{epsilon:.2f}_score:{np.min(steps_for_eps[np.nonzero(steps_for_eps)])}.jpg")
 	print(f'total_time taken: {(time()- start_time)//3600} hrs {(time()- start_time)%3600//60} min {int((time()- start_time)%60)} sec')
 	
