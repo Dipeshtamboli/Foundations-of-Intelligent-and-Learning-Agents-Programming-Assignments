@@ -72,7 +72,7 @@ class GridWorld(object):
 		if (self.r == self.end[0] and self.c == self.end[1]):
 			self.r = start[0]
 			self.c = start[1]
-			reward = 10
+			reward = 5
 			self.reached_end += 1
 			self.steps_for_eps[i] = self.steps_for_to_end
 			self.steps_for_to_end = 0
@@ -86,12 +86,12 @@ class GridWorld(object):
 		Target = reward + self.gamma*self.Q_tab[next_s["r"],next_s["c"],next_action]
 		self.Q_tab[state["r"],state["c"],action] = self.Q_tab[state["r"],state["c"],action]*(1-self.alpha) + self.alpha*(Target)
 
-	def Q_learning_update(self,state,action,reward,next_s,next_action):
+	def Q_learning_update(self,state,action,reward,next_s):
 		next_greedy_a = np.argmax(self.Q_tab[next_s["r"],next_s["c"],:])
 		Target = reward + self.gamma*self.Q_tab[next_s["r"],next_s["c"],next_greedy_a]
 		self.Q_tab[state["r"],state["c"],action] = self.Q_tab[state["r"],state["c"],action]*(1-self.alpha) + self.alpha*(Target)
 
-	def expected_Q_learning_update(self,state,action,reward,next_s,next_action):
+	def expected_sarsa_update(self,state,action,reward,next_s):
 		next_greedy_a = np.argmax(self.Q_tab[next_s["r"],next_s["c"],:])
 		Target = reward 
 		for act in range(self.num_actions):
@@ -100,6 +100,38 @@ class GridWorld(object):
 		self.Q_tab[state["r"],state["c"],action] = self.Q_tab[state["r"],state["c"],action]*(1-self.alpha) + self.alpha*(Target)
 
 	def find_path(self, steps, algo):
+		if algo=="sarsa":
+			episodes, steps_for_eps = self.find_path_sarsa(steps, algo)
+			return episodes, steps_for_eps
+		else:
+			self.episodes, self.steps_for_eps = np.zeros((steps)),np.zeros((steps))
+			state = {"r":self.r,"c":self.c}
+
+			for i in range(steps):
+
+				do_explore = np.random.binomial(1, self.epsilon)
+				if do_explore:
+					current_action = np.random.randint(self.num_actions)
+				else:
+					current_action = np.argmax(self.Q_tab[state["r"],state["c"],:])			
+
+				next_s, reward = self.get_next_s_r(self.id_to_action[current_action],i)
+				if algo=="q_learning":
+					self.Q_learning_update(state,current_action,reward,next_s)
+				elif algo=="exp_sarsa":
+					self.expected_sarsa_update(state,current_action,reward,next_s)					
+				self.episodes[i] = self.reached_end
+				self.steps_for_to_end += 1
+
+				state = next_s
+				# current_action = next_action
+				# if ((i+1) % 1000 == 0):
+				# 	print(i+1, self.reached_end)
+
+			return self.episodes, self.steps_for_eps
+
+
+	def find_path_sarsa(self, steps, algo):
 		self.episodes, self.steps_for_eps = np.zeros((steps)),np.zeros((steps))
 		state = {"r":self.r,"c":self.c}
 		do_explore = np.random.binomial(1, self.epsilon)
@@ -121,8 +153,8 @@ class GridWorld(object):
 				self.sarsa_update(state,current_action,reward,next_s,next_action)
 			elif algo=="q_learning":
 				self.Q_learning_update(state,current_action,reward,next_s,next_action)
-			elif algo=="exp_q_learn":
-				self.expected_Q_learning_update(state,current_action,reward,next_s,next_action)
+			elif algo=="exp_sarsa":
+				self.expected_sarsa_update(state,current_action,reward,next_s,next_action)
 			self.episodes[i] = self.reached_end
 			self.steps_for_to_end += 1
 
@@ -157,35 +189,36 @@ if __name__ == '__main__':
 	epsilon = 0.1
 	# algo = "q_learning"
 	algo = "sarsa"
-	# algo = "exp_q_learn"
+	# algo = "exp_sarsa"
 
-	world = GridWorld(height,width,start,end, wind_vector,num_actions,alpha,epsilon)
-	episodes, steps_for_eps = world.find_path(steps, algo)
-	# plot(x,y, title,x_lab, y_lab,savename)
-	# plot(range(steps), episodes, "Episodes against time steps","Time steps", "Episodes", f"{algo}_episodes_vs_time_alp:{alpha:.2f}_eps:{epsilon:.2f}_score:{episodes[-1]}.jpg")
-	plot(range(steps), steps_for_eps, "Steps taken for completing a episode against time steps","Time steps", "Steps taken for completing a episode", f"steps_taken_vs_time_alp:{alpha}_eps:{epsilon}.jpg")
+	# world = GridWorld(height,width,start,end, wind_vector,num_actions,alpha,epsilon)
+	# episodes, steps_for_eps = world.find_path(steps, algo)
+	# # plot(x,y, title,x_lab, y_lab,savename)
+	# # plot(range(steps), episodes, "Episodes against time steps","Time steps", "Episodes", f"{algo}_episodes_vs_time_alp:{alpha:.2f}_eps:{epsilon:.2f}_score:{episodes[-1]}.jpg")
+	# plot(range(steps), steps_for_eps, "Steps taken for completing a episode against time steps","Time steps", "Steps taken for completing a episode", f"steps_taken_vs_time_alp:{alpha}_eps:{epsilon}.jpg")
+	total_seeds = 10
 	plot_dicts = {}
-	for algo in ["q_learning","sarsa","exp_q_learn"]:
-		for randomseed in range(1,11):
+	for algo in ["q_learning","sarsa","exp_sarsa"]:
+		for randomseed in range(1,total_seeds+1):
 			np.random.seed(randomseed)
 			world = GridWorld(height,width,start,end, wind_vector,num_actions,alpha,epsilon)
 			episodes, steps_for_eps = world.find_path(steps, algo)		
 			if randomseed == 1:
 				plot_dicts[algo] = episodes
 			plot_dicts[algo] += episodes
-			if randomseed == 10:
-				plot_dicts[algo] /= 10
+			if randomseed == total_seeds:
+				plot_dicts[algo] /= total_seeds
 
 
 	x = range(steps)
 	plt.plot(x, plot_dicts["q_learning"], label='Q_Learning')
 	plt.plot(x, plot_dicts["sarsa"], label='Sarsa')
-	plt.plot(x, plot_dicts["exp_q_learn"], label='Expected_Sarsa')
-	plt.title("GridWorld with three agents", fontsize=15)
+	plt.plot(x, plot_dicts["exp_sarsa"], label='Expected_Sarsa')
+	plt.title(f"GridWorld with three agents\nalpha:{alpha},eps:{epsilon}", fontsize=15)
 	plt.xlabel("Time steps", fontsize=15)
 	plt.ylabel("Episodes against time steps", fontsize=15)
 	plt.legend(loc=2, prop={'size': 10})
 	plt.grid()
-	plt.savefig("randomseed_task5.jpg")
+	plt.savefig(f"plots/alpha:{alpha},eps:{epsilon}_task5_seed:{total_seeds}.jpg")
 	print(f'total_time taken: {(time()- start_time)//3600} hrs {(time()- start_time)%3600//60} min {int((time()- start_time)%60)} sec')
 	
