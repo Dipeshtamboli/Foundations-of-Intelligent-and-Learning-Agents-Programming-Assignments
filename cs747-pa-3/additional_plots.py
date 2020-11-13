@@ -11,6 +11,7 @@ parser.add_argument('--num_actions', default=4, help='Number of available action
 parser.add_argument('--steps', default=10000, help='Number of steps(horizon).')
 parser.add_argument('--alpha', default=0.6, help='Learning rate')
 parser.add_argument('--epsilon', default=0.05, help='Exploit vs explore')
+parser.add_argument('--step_size', default=0.1, help='step size of steps in 0 to 1')
 parser.add_argument('--algorithm', default="sarsa", help='q_learning,sarsa,exp_sarsa')
 parser.add_argument('--stochastic', default=False, help='stochasticity: True or False')
 parser.add_argument('--total_seeds', default=10, help='Number of seeds')
@@ -28,6 +29,7 @@ stochastic = args.stochastic
 num_actions = int(args.num_actions)
 steps = int(args.steps)
 alpha = float(args.alpha)
+step_size = float(args.step_size)
 epsilon = float(args.epsilon)
 algo = args.algorithm
 total_seeds = args.total_seeds
@@ -70,8 +72,8 @@ if what_to_plot == "sarsa_task_2-3-4_comparison":
 	plt.savefig(save_name)				
 
 if what_to_plot == "episodes_vs_al_epsi":
-	alphas = np.arange(0,1,0.1)
-	epsis = np.arange(0,1,0.1)
+	alphas = np.arange(0,1,step_size)
+	epsis = np.arange(0,1,step_size)
 	al_epsi = np.zeros((len(alphas), len(epsis)))
 	for i, alpha in enumerate(alphas):
 		for j, epsilon in enumerate(epsis):
